@@ -175,7 +175,74 @@ You will need to address the following five questions as part of your briefing, 
 Draft answer due Week 7.
 
 :::
- 
+
+```{python}
+import os
+import pandas as pd
+
+# Data loading 加载数据
+#| label: file-location-parquet
+ymd  = '20260917'
+city = 'London'
+host = 'https://orca.casa.ucl.ac.uk'
+url  = f'{host}/~jreades/data/{ymd}-{city}-listings.parquet'
+file = f'{ymd}-{city}-listings.parquet'
+if os.path.exists(file):
+  try:
+    df = pd.read_parquet(file)
+  except:
+    print(f"Unable to read parquet '{url}'")
+else: 
+  try:
+    df = pd.read_parquet(url)
+    df.to_parquet(file)
+  except:
+    print(f"Unable to download parquet '{url}")
+
+# 伦敦airbnb分布图
+import geopandas as gpd
+import matplotlib.pyplot as plt
+
+# Read London borough boundaries
+borough_url = (
+    "https://gis.london.gov.uk/arcgis/rest/services/apps/BIDs_service_02/"
+    "MapServer/6/query?where=1%3D1&outFields=NAME&outSR=4326&f=geojson"
+)
+boroughs = gpd.read_file(borough_url).reset_index(drop=True)
+
+# Convert longitude and latitude to points
+map_df = df[["longitude", "latitude"]].dropna()
+points = gpd.GeoDataFrame(
+    map_df,
+    geometry=gpd.points_from_xy(map_df["longitude"], map_df["latitude"]),
+    crs="EPSG:4326",
+)
+
+# Match each point to its borough
+joined = gpd.sjoin(
+    points, boroughs[["geometry"]], how="left", predicate="within"
+)
+
+# Count records by borough and keep boroughs with zero matches
+counts = joined["index_right"].value_counts()
+boroughs["listing_count"] = boroughs.index.map(counts).fillna(0).astype(int)
+
+# Colour boroughs by listing count
+fig, ax = plt.subplots(figsize=(10, 8))
+boroughs.to_crs("EPSG:27700").plot(
+    column="listing_count",
+    cmap="Reds",
+    edgecolor="white",
+    linewidth=0.6,
+    legend=True,
+    legend_kwds={"label": "Number of Airbnb listing records"},
+    ax=ax,
+)
+
+ax.set_title("Airbnb listings by London borough")
+ax.set_axis_off()
+plt.show()
+```
 ### 2. How many professional landlords are there?
 
 ::: {.duedate}
