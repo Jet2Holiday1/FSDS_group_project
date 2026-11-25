@@ -345,9 +345,7 @@ entire_homes = df[
 ].copy()
 
 # 筛选出租超过 90 days 的
-over_90 = entire_homes[
-    entire_homes["estimated_occupancy_l365d"] > 90
-].copy()
+print(df.columns.tolist())
 ```
 
 ### 2. How many professional landlords are there?
