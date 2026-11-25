@@ -194,19 +194,19 @@ import pandas as pd
 ymd  = '20260917'
 city = 'London'
 host = 'https://orca.casa.ucl.ac.uk'
-url  = f'{host}/~jreades/data/{ymd}-{city}-listings.parquet'
-file = f'{ymd}-{city}-listings.parquet'
+url  = f'{host}/~jreades/data/{ymd}-{city}-listings.csv.gz'
+file = f'{ymd}-{city}-listings.csv.gz'
 if os.path.exists(file):
   try:
-    df = pd.read_parquet(file)
+    df = pd.read_csv(file, low_memory=False)
   except:
-    print(f"Unable to read parquet '{url}'")
+    print(f"Unable to read csv '{url}'")
 else: 
   try:
-    df = pd.read_parquet(url)
-    df.to_parquet(file)
+    df = pd.read_csv(url, low_memory=False)
+    df.to_csv(file, index=False)
   except:
-    print(f"Unable to download parquet '{url}")
+    print(f"Unable to download csv '{url}'")
 
 ## Read London borough boundaries
 borough_url = (
@@ -214,8 +214,10 @@ borough_url = (
     "MapServer/6/query?where=1%3D1&outFields=NAME&outSR=4326&f=geojson"
 )
 boroughs = gpd.read_file(borough_url).reset_index(drop=True)
+```
 
-# 伦敦airbnb分布图
+```{python}
+# 伦敦 Airbnb分布图
 import geopandas as gpd
 import matplotlib.pyplot as plt
 
@@ -337,6 +339,9 @@ fig.show()
 
 ```{python}
 ## code03
+# 按照 estimated_occupancy_l365d > 90 为条件进行筛选，绘制这套房源出租超过90天的房屋
+# limitation：本分析只能识别潜在监管风险，而不能直接认定是否违法
+# 1.只能判断是否超过90天，无法判断是否非法  2.数据 estimated_occupancy_l365d 是过去365天的估计出租晚数  
 
 ## Data munging
 # 筛选筛选整套出租房源
@@ -344,8 +349,108 @@ entire_homes = df[
     df["room_type"] == "Entire home/apt"
 ].copy()
 
+# 排除估计出租晚数缺失的房源
+valid_homes = entire_homes.dropna(
+    subset=["estimated_occupancy_l365d"]
+)
+
 # 筛选出租超过 90 days 的
-print(df.columns.tolist())
+over_90 = entire_homes[
+    entire_homes["estimated_occupancy_l365d"] > 90
+].copy()
+
+# 筛选估计出租未超过90晚的房源
+under_90 = entire_homes[
+    entire_homes["estimated_occupancy_l365d"] <= 90
+].copy()
+
+# 计算数量
+total_entire = len(valid_homes)
+over_90_count = len(over_90)
+
+# 计算比例
+over_90_pct = over_90_count / total_entire * 100
+
+print(f"Entire home listings: {total_entire}")
+print(f"Listings exceeding 90 nights: {over_90_count}")
+print(f"Percentage: {over_90_pct:.2f}%")
+```
+
+```{python}
+## Data visualization
+# scatter plot 散点图
+import geopandas as gpd
+import matplotlib.pyplot as plt
+# make the picture Clearly
+from matplotlib_inline.backend_inline import set_matplotlib_formats
+set_matplotlib_formats('retina')
+
+# Convert longitude and latitude to points
+over_90_points = gpd.GeoDataFrame(
+    over_90,
+    geometry=gpd.points_from_xy(
+        over_90["longitude"], over_90["latitude"]
+    ),
+    crs="EPSG:4326"
+)
+
+under_90_points = gpd.GeoDataFrame(
+    under_90,
+    geometry=gpd.points_from_xy(
+        under_90["longitude"], under_90["latitude"]
+    ),
+    crs="EPSG:4326"
+)
+
+# Plot London borough boundaries
+fig, ax = plt.subplots(figsize=(7, 6))
+
+boroughs.to_crs("EPSG:27700").plot(
+    color="#F5F5F5",
+    edgecolor="#B0B0B0",
+    linewidth=0.6,
+    ax=ax
+)
+
+# Plot listings under 90 nights
+under_90_points.to_crs("EPSG:27700").plot(
+    ax=ax,
+    color="grey",
+    markersize=1,
+    alpha=0.3,
+    label="90 nights or fewer"
+)
+
+# Plot listings over 90 nights
+over_90_points.to_crs("EPSG:27700").plot(
+    ax=ax,
+    color="red",
+    markersize=1.5,
+    alpha=0.7,
+    label="More than 90 nights"
+)
+
+ax.set_title(
+    "Spatial distribution of entire-home Airbnb listings\n"
+    "by estimated annual occupancy",
+    fontsize=11
+)
+
+# Add Legend
+ax.legend(
+    loc="center left",
+    bbox_to_anchor=(1.02, 0.5),
+    title="Estimated occupancy",
+    title_fontsize=9,
+    fontsize=8,
+    markerscale=5,
+    frameon=False
+)
+
+ax.set_axis_off()
+
+plt.tight_layout()
+plt.show()
 ```
 
 ### 2. How many professional landlords are there?
@@ -368,6 +473,7 @@ Draft answer due Week 9.
 
 ### 5. Can the story be reframed as a positive one about social mobility or housing opportunity?
 
+## References
 
 ## References
 
