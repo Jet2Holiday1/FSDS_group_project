@@ -1,0 +1,420 @@
+---
+date: last-modified
+bibliography: bio.bib
+csl: harvard-cite-them-right.csl
+title: jet2holiday Group Project
+execute:
+  echo: false
+  freeze: true
+format:
+  html:
+    code-copy: true
+    code-link: true
+    toc: true
+    toc-title: On this page
+    toc-depth: 2
+    toc_float:
+      collapsed: false
+      smooth_scroll: true
+  pdf:
+    include-in-header:
+      text: |
+        \addtokomafont{disposition}{\rmfamily}
+    mainfont: Spectral
+    sansfont: Roboto Flex
+    monofont: Liberation Mono
+    papersize: a4
+    geometry:
+      - top=25mm
+      - left=40mm
+      - right=30mm
+      - bottom=25mm
+      - heightrounded
+    toc: false
+    number-sections: false
+    colorlinks: true
+    highlight-style: github
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .qmd
+      format_name: quarto
+      format_version: '1.0'
+      jupytext_version: 1.19.7
+  kernelspec:
+    display_name: Python 3 (ipykernel)
+    language: python
+    name: python3
+---
+
+## Declaration of Authorship {.unnumbered .unlisted}
+
+We, [jet2holiday], pledge our honour that the work presented in this assessment is our own. Where information has been derived from other sources, we confirm that this has been indicated in the work. Where a Large Language Model such as ChatGPT has been used we confirm that we have made its contribution to the final submission clear.
+
+Date:
+
+Student Numbers: 
+
+## Priorities for Feedback
+
+Are there any areas on which you would appreciate more detailed feedback if we're able to offer it?
+
+{{< pagebreak >}}
+
+
+# Briefing
+
+
+In the midst of an election, a newspaper has broken the story of an advisor on social mobility to the Mayor owning three homes, two of which are let on Airbnb (one of which is still council-owned housing!). The opposition has announced a plan to force all *professional landlords* to register their properties and face higher Council Tax rates claiming that Airbnb is 'out of control' in the capital. 
+
+The Mayor wants to understand the scale of the 'problem' and the likely impacts of the opposition's proposal so that they can either adopt it (and show how responsive they are) or demonstrate how poorly thought-through the opposition's proposal is (and show that they're not ready to govern). 
+
+They have come to you---their crack team of data analysts and policy advisors---for a briefing supported by evidence and visualisations that they can use in their campaign communications. You are working in an information-poor environment, so you will need to make assumptions, justify them clearly, and show how they affect your conclusions. Use data, reasoning, and clear visualisation to build a persuasive and evidence-informed argument.
+
+## What the Mayor wants to know
+
+The Mayor has asked you to answer five key questions.
+
+::: {.callout-important}
+### Flexibility of Format
+
+You will need to address the following five questions as part of your briefing, but you do *not* need to keep the question/answer format in your submission. I would like you to focus on effective communication: it must be clear that you *have* answered these questions in your briefing, but you don't need to keep these headings if they get in the way of your ability to communicate to the target audience.
+
+:::
+
+### 1. Is Airbnb 'out of control' in London?
+
+::: {.duedate: Draft answer due Week 7.}
+
+01background description
+
+02失控的界定
+
+...
+
+:::
+
+```{python}
+## code01
+## 运行环境：JupyterLab
+
+# Data loading 加载数据
+## Airbnb Data
+## label: file-location-parquet
+# Data loading 加载数据
+## Airbnb Data
+## label: file-location-parquet
+import os
+import pandas as pd
+import geopandas as gpd
+
+ymd  = '20260917'
+city = 'London'
+host = 'https://orca.casa.ucl.ac.uk'
+url  = f'{host}/~jreades/data/{ymd}-{city}-listings.csv.gz'
+file = f'{ymd}-{city}-listings.csv.gz'
+if os.path.exists(file):
+  try:
+    df = pd.read_csv(file, low_memory=False)
+  except:
+    print(f"Unable to read csv '{url}'")
+else: 
+  try:
+    df = pd.read_csv(url, low_memory=False)
+    df.to_csv(file, index=False)
+  except:
+    print(f"Unable to download csv '{url}'")
+
+## Read London borough boundaries
+borough_url = (
+    "https://gis.london.gov.uk/arcgis/rest/services/apps/BIDs_service_02/"
+    "MapServer/6/query?where=1%3D1&outFields=NAME&outSR=4326&f=geojson"
+)
+boroughs = gpd.read_file(borough_url).reset_index(drop=True)
+```
+```{python}
+%pip install adjustText
+```
+```{python}
+# 伦敦 Airbnb分布图
+import geopandas as gpd
+import matplotlib.pyplot as plt
+from adjustText import adjust_text
+import matplotlib.patheffects as pe
+
+# Convert longitude and latitude to points
+map_df = df[["longitude", "latitude"]].dropna()
+points = gpd.GeoDataFrame(
+    map_df,
+    geometry=gpd.points_from_xy(map_df["longitude"], map_df["latitude"]),
+    crs="EPSG:4326",
+)
+
+# Match each point to its borough
+joined = gpd.sjoin(
+    points, boroughs[["geometry"]], how="left", predicate="within"
+)
+
+# Count records by borough and keep boroughs with zero matches
+counts = joined["index_right"].value_counts()
+boroughs["listing_count"] = boroughs.index.map(counts).fillna(0).astype(int)
+
+boroughs_map = boroughs.to_crs("EPSG:27700")
+label_points = boroughs_map.geometry.representative_point()
+
+# Colour boroughs by listing count
+fig, ax = plt.subplots(figsize=(10, 8))
+boroughs_map.plot(
+    column="listing_count",
+    cmap="Reds",
+    edgecolor="white",
+    linewidth=0.6,
+    legend=True,
+    legend_kwds={"label": "Number of Airbnb listing records"},
+    ax=ax,
+)
+
+# Add borough labels and move overlapping labels apart
+labels = []
+for name, point in zip(boroughs_map["name"], label_points):
+    label = ax.text(
+        point.x, point.y, name,
+        ha="center", va="center", fontsize=6,
+        path_effects=[pe.withStroke(linewidth=1.5, foreground="white")],
+    )
+    labels.append(label)
+
+ax.set_title("Airbnb listings by London borough")
+ax.set_axis_off()
+fig.tight_layout()
+
+adjust_text(
+    labels,
+    ax=ax,
+    arrowprops={"arrowstyle": "-", "color": "0.45", "lw": 0.5},
+)
+plt.show()
+```
+
+```{python}
+## code02
+# 按照房东筛选，判断是否存在『一人多房』的情况，包括：同一房屋按部分出租 + 不同房屋整套出租
+
+## Data munging
+import pandas as pd
+import plotly.express as px
+
+# 按 host id 筛选数据
+host_counts = (
+    df.groupby("host_id")["id"]
+    .nunique()
+    .reset_index(name="listing_count")
+)
+
+multi_hosts = host_counts[
+    host_counts["listing_count"] > 1
+]
+
+multi_listings = df[
+    df["host_id"].isin(multi_hosts["host_id"])
+].copy()
+
+import pandas as pd
+import plotly.express as px
+
+# 给每个房东分组
+host_counts["host_scale"] = pd.cut(
+    host_counts["listing_count"],
+    bins=[0, 1, 4, 9, float("inf")],
+    labels=["1 listing", "2–4 listings", "5–9 listings", "10+ listings"]
+)
+
+# 用 listing_count 求每组房东掌握的房源总数
+listing_summary = (
+    host_counts.groupby("host_scale", observed=True)["listing_count"]
+    .sum()
+    .reset_index(name="listing_number")
+)
+```
+
+```{python}
+# 统计多房源房东掌握的房源占比 Share of listings controlled by multi-listing hosts
+
+# 一句话概括情况
+multi_listing_share = len(multi_listings) / len(df) * 100
+print(f"Share of listings controlled by multi-listing hosts: {multi_listing_share:.2f}%")
+
+# Data visualization
+fig = px.treemap(
+    listing_summary,
+    path=["host_scale"],
+    values="listing_number",
+    color="host_scale",
+    color_discrete_map={
+        "1 listing": "#7A9DE1",
+        "2–4 listings": "#FFE3EF",
+        "5–9 listings": "#FFB9D5",
+        "10+ listings": "#FF91BE"
+    },
+    title="Distribution of listings by host size"
+)
+
+fig.update_traces(
+    texttemplate="%{label}<br>%{value:,} listings<br>%{percentRoot:.2%}",
+    marker=dict(line=dict(color="white", width=2))
+)
+
+fig.update_layout(
+    width=700,
+    height=700,
+    font=dict(size=13),
+    margin=dict(t=60, l=10, r=10, b=10)
+)
+
+fig.show()
+```
+
+```{python}
+# 在空间中的分布情况
+```
+
+```{python}
+## code03
+# 按照 estimated_occupancy_l365d > 90 为条件进行筛选，绘制这套房源出租超过90天的房屋
+# limitation：本分析只能识别潜在监管风险，而不能直接认定是否违法
+# 1.只能判断是否超过90天，无法判断是否非法  2.数据 estimated_occupancy_l365d 是过去365天的估计出租晚数  
+
+## Data munging
+# 筛选筛选整套出租房源
+entire_homes = df[
+    df["room_type"] == "Entire home/apt"
+].copy()
+
+# 排除估计出租晚数缺失的房源
+valid_homes = entire_homes.dropna(
+    subset=["estimated_occupancy_l365d"]
+)
+
+# 筛选出租超过 90 days 的
+over_90 = entire_homes[
+    entire_homes["estimated_occupancy_l365d"] > 90
+].copy()
+
+# 筛选估计出租未超过90晚的房源
+under_90 = entire_homes[
+    entire_homes["estimated_occupancy_l365d"] <= 90
+].copy()
+
+# 计算数量
+total_entire = len(valid_homes)
+over_90_count = len(over_90)
+
+# 计算比例
+over_90_pct = over_90_count / total_entire * 100
+
+print(f"Entire home listings: {total_entire}")
+print(f"Listings exceeding 90 nights: {over_90_count}")
+print(f"Percentage: {over_90_pct:.2f}%")
+```
+
+```{python}
+## Data visualization
+# scatter plot 散点图
+import geopandas as gpd
+import matplotlib.pyplot as plt
+# make the picture Clearly
+from matplotlib_inline.backend_inline import set_matplotlib_formats
+set_matplotlib_formats('retina')
+
+# Convert longitude and latitude to points
+over_90_points = gpd.GeoDataFrame(
+    over_90,
+    geometry=gpd.points_from_xy(
+        over_90["longitude"], over_90["latitude"]
+    ),
+    crs="EPSG:4326"
+)
+
+under_90_points = gpd.GeoDataFrame(
+    under_90,
+    geometry=gpd.points_from_xy(
+        under_90["longitude"], under_90["latitude"]
+    ),
+    crs="EPSG:4326"
+)
+
+# Plot London borough boundaries
+fig, ax = plt.subplots(figsize=(7, 6))
+
+boroughs.to_crs("EPSG:27700").plot(
+    color="#F5F5F5",
+    edgecolor="#B0B0B0",
+    linewidth=0.6,
+    ax=ax
+)
+
+# Plot listings under 90 nights
+under_90_points.to_crs("EPSG:27700").plot(
+    ax=ax,
+    color="grey",
+    markersize=1,
+    alpha=0.3,
+    label="90 nights or fewer"
+)
+
+# Plot listings over 90 nights
+over_90_points.to_crs("EPSG:27700").plot(
+    ax=ax,
+    color="red",
+    markersize=1.5,
+    alpha=0.7,
+    label="More than 90 nights"
+)
+
+ax.set_title(
+    "Spatial distribution of entire-home Airbnb listings\n"
+    "by estimated annual occupancy",
+    fontsize=11
+)
+
+# Add Legend
+ax.legend(
+    loc="center left",
+    bbox_to_anchor=(1.02, 0.5),
+    title="Estimated occupancy",
+    title_fontsize=9,
+    fontsize=8,
+    markerscale=5,
+    frameon=False
+)
+
+ax.set_axis_off()
+
+plt.tight_layout()
+plt.show()
+```
+
+### 2. How many professional landlords are there?
+
+::: {.duedate}
+
+Draft answer due Week 8.
+
+:::
+ 
+### 3. How many properties would be affected by the opposition's proposal?
+
+::: {.duedate}
+
+Draft answer due Week 9.
+
+:::
+ 
+### 4. What are the likely pros and cons of the opposition's proposal (for the Mayor, for residents, and for the city)?
+
+### 5. Can the story be reframed as a positive one about social mobility or housing opportunity?
+
+## References
+
+## References
+
