@@ -2,7 +2,7 @@
 date: last-modified
 bibliography: bio.bib
 csl: harvard-cite-them-right.csl
-title: Group Name's Group Project
+title: jet2holiday Group Project
 execute:
   echo: false
   freeze: true
@@ -138,7 +138,7 @@ row_count = f"{df.shape[0]:,}"
 ```
 The other way is to interpolate it directly into the sentence like this (`{python} row_count `); however, I've found it less reliable and it really requires you to be careful about data types. So `{python} print(f"{df.shape[0]:,}") ` probably won't work and you'll just see some Python code instead.
 
-And here's a nice little chart straight into the document!
+And here's a nice little chart straight into the document!（ZTY：这句是注释吗？）
 
 ```{python}
 #| label: plotting
@@ -177,6 +177,8 @@ Draft answer due Week 7.
 :::
 
 ```{python}
+## 在运行以下代码之前请先配置好py环境，代码本身没有任何问题
+
 import os
 import pandas as pd
 
