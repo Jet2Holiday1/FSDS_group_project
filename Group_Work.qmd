@@ -188,6 +188,9 @@ You will need to address the following five questions as part of your briefing, 
 # Data loading 加载数据
 ## Airbnb Data
 ## label: file-location-parquet
+# Data loading 加载数据
+## Airbnb Data
+## label: file-location-parquet
 import os
 import pandas as pd
 
@@ -215,7 +218,9 @@ borough_url = (
 )
 boroughs = gpd.read_file(borough_url).reset_index(drop=True)
 ```
+```{python}
 
+```
 ```{python}
 # 伦敦 Airbnb分布图
 import geopandas as gpd
@@ -238,9 +243,12 @@ joined = gpd.sjoin(
 counts = joined["index_right"].value_counts()
 boroughs["listing_count"] = boroughs.index.map(counts).fillna(0).astype(int)
 
+boroughs_map = boroughs.to_crs("EPSG:27700")
+label_points = boroughs_map.geometry.representative_point()
+
 # Colour boroughs by listing count
 fig, ax = plt.subplots(figsize=(10, 8))
-boroughs.to_crs("EPSG:27700").plot(
+boroughs_map.plot(
     column="listing_count",
     cmap="Reds",
     edgecolor="white",
@@ -249,6 +257,13 @@ boroughs.to_crs("EPSG:27700").plot(
     legend_kwds={"label": "Number of Airbnb listing records"},
     ax=ax,
 )
+
+for name, point in zip(boroughs_map["NAME"], label_points):
+    ax.text(
+        point.x, point.y, name,
+        ha="center", va="center", fontsize=6,
+        path_effects=[pe.withStroke(linewidth=2, foreground="white")],
+    )
 
 ax.set_title("Airbnb listings by London borough")
 ax.set_axis_off()
