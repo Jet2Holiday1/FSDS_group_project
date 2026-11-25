@@ -49,7 +49,7 @@ jupyter:
 
 ## Declaration of Authorship {.unnumbered .unlisted}
 
-We, [insert your group's names], pledge our honour that the work presented in this assessment is our own. Where information has been derived from other sources, we confirm that this has been indicated in the work. Where a Large Language Model such as ChatGPT has been used we confirm that we have made its contribution to the final submission clear.
+We, [jet2holiday], pledge our honour that the work presented in this assessment is our own. Where information has been derived from other sources, we confirm that this has been indicated in the work. Where a Large Language Model such as ChatGPT has been used we confirm that we have made its contribution to the final submission clear.
 
 Date:
 
@@ -139,7 +139,7 @@ row_count = f"{df.shape[0]:,}"
 
 The other way is to interpolate it directly into the sentence like this (`{python} row_count `); however, I've found it less reliable and it really requires you to be careful about data types. So `{python} print(f"{df.shape[0]:,}") ` probably won't work and you'll just see some Python code instead.
 
-And here's a nice little chart straight into the document!（ZTY：这句是注释吗？）
+And here's a nice little chart straight into the document!
 
 ```{python}
 #| label: plotting
@@ -171,20 +171,26 @@ You will need to address the following five questions as part of your briefing, 
 
 ### 1. Is Airbnb 'out of control' in London?
 
-::: {.duedate}
+::: {.duedate: Draft answer due Week 7.}
 
-Draft answer due Week 7.
+01background description
+
+02失控的界定
+
+...
 
 :::
 
 ```{python}
+## code01
 ## 运行环境：JupyterLab
 
+# Data loading 加载数据
+## Airbnb Data
+## label: file-location-parquet
 import os
 import pandas as pd
 
-# Data loading 加载数据
-#| label: file-location-parquet
 ymd  = '20260917'
 city = 'London'
 host = 'https://orca.casa.ucl.ac.uk'
@@ -202,16 +208,16 @@ else:
   except:
     print(f"Unable to download parquet '{url}")
 
-# 伦敦airbnb分布图
-import geopandas as gpd
-import matplotlib.pyplot as plt
-
-# Read London borough boundaries
+## Read London borough boundaries
 borough_url = (
     "https://gis.london.gov.uk/arcgis/rest/services/apps/BIDs_service_02/"
     "MapServer/6/query?where=1%3D1&outFields=NAME&outSR=4326&f=geojson"
 )
 boroughs = gpd.read_file(borough_url).reset_index(drop=True)
+
+# 伦敦airbnb分布图
+import geopandas as gpd
+import matplotlib.pyplot as plt
 
 # Convert longitude and latitude to points
 map_df = df[["longitude", "latitude"]].dropna()
@@ -247,6 +253,103 @@ ax.set_axis_off()
 plt.show()
 ```
 
+```{python}
+## code02
+# 按照房东筛选，判断是否存在『一人多房』的情况，包括：同一房屋按部分出租 + 不同房屋整套出租
+
+## Data munging
+import pandas as pd
+import plotly.express as px
+
+# 按 host id 筛选数据
+host_counts = (
+    df.groupby("host_id")["id"]
+    .nunique()
+    .reset_index(name="listing_count")
+)
+
+multi_hosts = host_counts[
+    host_counts["listing_count"] > 1
+]
+
+multi_listings = df[
+    df["host_id"].isin(multi_hosts["host_id"])
+].copy()
+
+import pandas as pd
+import plotly.express as px
+
+# 给每个房东分组
+host_counts["host_scale"] = pd.cut(
+    host_counts["listing_count"],
+    bins=[0, 1, 4, 9, float("inf")],
+    labels=["1 listing", "2–4 listings", "5–9 listings", "10+ listings"]
+)
+
+# 用 listing_count 求每组房东掌握的房源总数
+listing_summary = (
+    host_counts.groupby("host_scale", observed=True)["listing_count"]
+    .sum()
+    .reset_index(name="listing_number")
+)
+```
+
+```{python}
+# 统计多房源房东掌握的房源占比 Share of listings controlled by multi-listing hosts
+
+# 一句话概括情况
+multi_listing_share = len(multi_listings) / len(df) * 100
+print(f"Share of listings controlled by multi-listing hosts: {multi_listing_share:.2f}%")
+
+# Data visualization
+fig = px.treemap(
+    listing_summary,
+    path=["host_scale"],
+    values="listing_number",
+    color="host_scale",
+    color_discrete_map={
+        "1 listing": "#7A9DE1",
+        "2–4 listings": "#FFE3EF",
+        "5–9 listings": "#FFB9D5",
+        "10+ listings": "#FF91BE"
+    },
+    title="Distribution of listings by host size"
+)
+
+fig.update_traces(
+    texttemplate="%{label}<br>%{value:,} listings<br>%{percentRoot:.2%}",
+    marker=dict(line=dict(color="white", width=2))
+)
+
+fig.update_layout(
+    width=700,
+    height=700,
+    font=dict(size=13),
+    margin=dict(t=60, l=10, r=10, b=10)
+)
+
+fig.show()
+```
+
+```{python}
+# 在空间中的分布情况
+```
+
+```{python}
+## code03
+
+## Data munging
+# 筛选筛选整套出租房源
+entire_homes = df[
+    df["room_type"] == "Entire home/apt"
+].copy()
+
+# 筛选出租超过 90 days 的
+over_90 = entire_homes[
+    entire_homes["estimated_occupancy_l365d"] > 90
+].copy()
+```
+
 ### 2. How many professional landlords are there?
 
 ::: {.duedate}
@@ -267,4 +370,6 @@ Draft answer due Week 9.
 
 ### 5. Can the story be reframed as a positive one about social mobility or housing opportunity?
 
+
 ## References
+
