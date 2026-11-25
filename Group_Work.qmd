@@ -21,8 +21,8 @@ format:
       text: |
         \addtokomafont{disposition}{\rmfamily}
     mainfont: Spectral
-    sansfont: "Roboto Flex"
-    monofont: "Liberation Mono"
+    sansfont: Roboto Flex
+    monofont: Liberation Mono
     papersize: a4
     geometry:
       - top=25mm
@@ -40,7 +40,7 @@ jupyter:
       extension: .qmd
       format_name: quarto
       format_version: '1.0'
-      jupytext_version: 1.15.2
+      jupytext_version: 1.19.7
   kernelspec:
     display_name: Python 3 (ipykernel)
     language: python
@@ -70,7 +70,7 @@ This page has example code to show you can include outputs while hiding code in 
 See the raw file for examples of how to hide computational output as there is code hidden here.
 
 ```{python}
-#| echo: True 
+#| echo: true
 #| label: importing
 # This code will be shown, 
 # but the next block will not
@@ -136,6 +136,7 @@ print(f"One of way to embed output in the text looks like this: after cleaning, 
 # reliable.
 row_count = f"{df.shape[0]:,}"
 ```
+
 The other way is to interpolate it directly into the sentence like this (`{python} row_count `); however, I've found it less reliable and it really requires you to be careful about data types. So `{python} print(f"{df.shape[0]:,}") ` probably won't work and you'll just see some Python code instead.
 
 And here's a nice little chart straight into the document!（ZTY：这句是注释吗？）
@@ -177,7 +178,7 @@ Draft answer due Week 7.
 :::
 
 ```{python}
-## 在运行以下代码之前请先配置好py环境，代码本身没有任何问题
+## 运行环境：JupyterLab
 
 import os
 import pandas as pd
@@ -245,6 +246,7 @@ ax.set_title("Airbnb listings by London borough")
 ax.set_axis_off()
 plt.show()
 ```
+
 ### 2. How many professional landlords are there?
 
 ::: {.duedate}
