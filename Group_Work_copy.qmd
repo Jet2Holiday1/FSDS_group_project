@@ -8,6 +8,7 @@ execute:
   freeze: true
 format:
   html:
+    embed-resources: true
     code-copy: true
     code-link: true
     toc: true
